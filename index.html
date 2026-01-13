@@ -35,6 +35,8 @@
             
             <button onclick="insertTimestamp()" style="background: #106e1a;">Insert Timestamp (⌘;)</button>
             <button class="secondary" onclick="processTimestamps()">Process Timestamps → YouTube Links</button>
+            <button class="secondary" onclick="processFootnotes()">Add Footnotes</button>
+            <button class="secondary" onclick="copyAsHTML()">Copy as HTML for Google Docs</button>
             <button class="secondary" onclick="downloadMarkdown()">Download Markdown</button>
             <button class="secondary" onclick="downloadPython()">Download Python Script</button>
             <button class="secondary" onclick="toggleFootnotes()">Manage Footnotes</button>
@@ -95,6 +97,10 @@ Press ⌘; to insert timestamp, or enable auto-timestamp to insert on every Ente
             <div class="shortcut">
                 <kbd>⌘P</kbd>
                 <span>Process Timestamps</span>
+            </div>
+            <div class="shortcut">
+                <kbd>⌘F</kbd>
+                <span>Add Footnotes</span>
             </div>
         </div>
         <div id="status">Ready</div>

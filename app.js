@@ -161,10 +161,20 @@ function addFootnoteReferences(text) {
     let counter = 1;
     let processedText = text;
     
+    // First, remove any existing footnote markers and definitions
+    // Remove inline markers like UDAA[^1]
+    processedText = processedText.replace(/\b([A-Z]+)\[\^\d+\]/g, '$1');
+    
+    // Remove footnote definitions at the end (everything after a line that starts with [^)
+    const footnoteDefStart = processedText.search(/\n\n\[\^1\]:/);
+    if (footnoteDefStart !== -1) {
+        processedText = processedText.substring(0, footnoteDefStart);
+    }
+    
     // Find all acronyms in the text and add footnote references
     Object.keys(footnotes).forEach(acronym => {
         const regex = new RegExp(`\\b${acronym}\\b(?!\\[\\^)`, 'g');
-        const matches = text.match(regex);
+        const matches = processedText.match(regex);
         
         if (matches && matches.length > 0) {
             if (!footnoteMap[acronym]) {
@@ -191,6 +201,38 @@ function addFootnoteReferences(text) {
     }
     
     return processedText;
+}
+
+function processFootnotes() {
+    const editor = document.getElementById('editor');
+    const content = editor.value;
+    
+    // Process footnotes
+    const processedContent = addFootnoteReferences(content);
+    
+    // Count how many footnotes were added
+    const footnoteCount = (processedContent.match(/\[\^\d+\]:/g) || []).length;
+    
+    // Update editor
+    editor.value = processedContent;
+    
+    // Show success message
+    const infoBox = document.createElement('div');
+    infoBox.className = 'info-box success';
+    infoBox.innerHTML = `✅ Successfully processed ${footnoteCount} footnotes!<br>First occurrences of acronyms now have [^n] references, definitions added at the end.`;
+    
+    const editorContainer = document.querySelector('.editor-container');
+    const existingInfo = editorContainer.previousElementSibling;
+    if (existingInfo && existingInfo.classList.contains('info-box')) {
+        existingInfo.remove();
+    }
+    editorContainer.insertAdjacentElement('beforebegin', infoBox);
+    
+    setTimeout(() => {
+        infoBox.remove();
+    }, 5000);
+    
+    updateStatus(`Added ${footnoteCount} footnotes`);
 }
 
 function processTimestamps() {
@@ -298,6 +340,114 @@ function downloadMarkdown() {
     link.download = `${title.replace(/[^a-z0-9]/gi, '_')}_${new Date().toISOString().split('T')[0]}.md`;
     link.click();
     updateStatus('Markdown downloaded');
+}
+
+function convertMarkdownToHTML(markdown) {
+    let html = markdown;
+    
+    // Convert headers (must come before other conversions)
+    html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+    html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+    
+    // Convert bold
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+    
+    // Convert italic
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+    
+    // Convert links [text](url)
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+    
+    // Convert footnote references to superscript with the definition inline
+    // First collect all footnote definitions
+    const footnoteDefinitions = {};
+    const footnoteDefRegex = /\[\^(\d+)\]:\s*(.+?)(?=\n\[|\n\n|$)/gs;
+    let match;
+    while ((match = footnoteDefRegex.exec(html)) !== null) {
+        footnoteDefinitions[match[1]] = match[2].trim();
+    }
+    
+    // Replace inline footnote markers with superscript numbers that have the definition in parentheses
+    html = html.replace(/\[\^(\d+)\]/g, (match, num) => {
+        const definition = footnoteDefinitions[num];
+        if (definition) {
+            return `<sup>${num}</sup> <em>(${definition})</em>`;
+        }
+        return `<sup>${num}</sup>`;
+    });
+    
+    // Remove the footnote definitions section at the end
+    html = html.replace(/\n\n\[\^\d+\]:.*$/gs, '');
+    
+    // Convert line breaks to <br> (but not double line breaks which become paragraphs)
+    html = html.replace(/\n\n/g, '</p><p>');
+    html = html.replace(/\n/g, '<br>');
+    
+    // Wrap in paragraphs
+    html = '<p>' + html + '</p>';
+    
+    // Clean up empty paragraphs
+    html = html.replace(/<p><\/p>/g, '');
+    html = html.replace(/<p><br><\/p>/g, '');
+    
+    return html;
+}
+
+function copyAsHTML() {
+    const content = document.getElementById('editor').value;
+    
+    if (!content.trim()) {
+        alert('No content to copy!');
+        return;
+    }
+    
+    // Convert markdown to HTML
+    const htmlContent = convertMarkdownToHTML(content);
+    
+    // Create a temporary container
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    document.body.appendChild(container);
+    
+    // Select the content
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    // Copy to clipboard
+    try {
+        document.execCommand('copy');
+        updateStatus('HTML copied to clipboard - paste into Google Docs!');
+        
+        // Show success message
+        const infoBox = document.createElement('div');
+        infoBox.className = 'info-box success';
+        infoBox.innerHTML = `✅ Content copied as HTML!<br>Now paste (⌘V) into Google Docs. Links and formatting will be preserved.`;
+        
+        const editorContainer = document.querySelector('.editor-container');
+        const existingInfo = editorContainer.previousElementSibling;
+        if (existingInfo && existingInfo.classList.contains('info-box')) {
+            existingInfo.remove();
+        }
+        editorContainer.insertAdjacentElement('beforebegin', infoBox);
+        
+        setTimeout(() => {
+            infoBox.remove();
+        }, 5000);
+    } catch (err) {
+        alert('Failed to copy. Please try selecting and copying manually.');
+    }
+    
+    // Clean up
+    selection.removeAllRanges();
+    document.body.removeChild(container);
 }
 
 function downloadPython() {
@@ -458,6 +608,12 @@ function handleKeyboardShortcuts(e) {
     if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
         e.preventDefault();
         processTimestamps();
+    }
+    
+    // ⌘F or Ctrl+F to process footnotes
+    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+        e.preventDefault();
+        processFootnotes();
     }
     
     // Enter key with auto-timestamp enabled
