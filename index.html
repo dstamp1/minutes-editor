@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Minutes Timer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="header">
+        <div class="controls">
+            <div class="control-group">
+                <label>Meeting Title:</label>
+                <input type="text" id="meetingTitle" placeholder="Land Use Committee Meeting" style="width: 300px;">
+            </div>
+            
+            <div class="control-group">
+                <label>Recording URL:</label>
+                <input type="text" id="recordingUrl" placeholder="https://youtu.be/..." style="width: 300px;">
+            </div>
+            
+            <div class="control-group">
+                <label>Start Time:</label>
+                <input type="datetime-local" id="startTime">
+            </div>
+            
+            <button onclick="setStartTimeNow()">Set to Now</button>
+            
+            <div class="toggle-container">
+                <label>Auto-timestamp on Enter:</label>
+                <div class="toggle" id="autoTimestampToggle" onclick="toggleAutoTimestamp()">
+                    <div class="toggle-slider"></div>
+                </div>
+            </div>
+            
+            <button onclick="insertTimestamp()" style="background: #106e1a;">Insert Timestamp (⌘;)</button>
+            <button class="secondary" onclick="processTimestamps()">Process Timestamps → YouTube Links</button>
+            <button class="secondary" onclick="downloadMarkdown()">Download Markdown</button>
+            <button class="secondary" onclick="downloadPython()">Download Python Script</button>
+            <button class="secondary" onclick="toggleFootnotes()">Manage Footnotes</button>
+        </div>
+        
+        <div>
+            <div class="collapsible" onclick="toggleQuickInsert()">
+                <span class="arrow" id="quickInsertArrow">▶</span>
+                <span>Quick Insert Templates</span>
+            </div>
+            <div id="quickInsertPanel" style="display: none; margin-top: 10px;">
+                <div class="quick-insert">
+                    <div class="quick-insert-section">
+                        <div class="quick-insert-label">Structure</div>
+                        <div class="quick-buttons">
+                            <button class="quick" onclick="insertAgenda()">Full Agenda</button>
+                        </div>
+                    </div>
+                    
+                    <div class="quick-insert-section">
+                        <div class="quick-insert-label">Common Phrases</div>
+                        <div class="quick-buttons">
+                            <button class="quick" onclick="insertPhrase('callToOrder')">Call to Order</button>
+                            <button class="quick" onclick="insertPhrase('quorum')">Quorum</button>
+                            <button class="quick" onclick="insertPhrase('adopted')">Adopted w/o Objection</button>
+                            <button class="quick" onclick="insertPhrase('motion')">Motion</button>
+                            <button class="quick" onclick="insertPhrase('carried')">Motion Carried</button>
+                            <button class="quick" onclick="insertPhrase('failed')">Motion Failed</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="editor-container">
+        <textarea id="editor" placeholder="Paste your meeting agenda here and start taking notes...
+
+Example:
+1. Call to Order
+2. Presentation
+   - Topic overview
+3. Questions
+
+Press ⌘; to insert timestamp, or enable auto-timestamp to insert on every Enter press."></textarea>
+    </div>
+    
+    <div class="footer">
+        <div class="shortcuts">
+            <div class="shortcut">
+                <kbd>⌘;</kbd>
+                <span>Insert Timestamp</span>
+            </div>
+            <div class="shortcut">
+                <kbd>⌘S</kbd>
+                <span>Download Markdown</span>
+            </div>
+            <div class="shortcut">
+                <kbd>⌘P</kbd>
+                <span>Process Timestamps</span>
+            </div>
+        </div>
+        <div id="status">Ready</div>
+    </div>
+
+    <script src="constants.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
