@@ -397,7 +397,19 @@ function convertMarkdownToHTML(markdown) {
 }
 
 function copyAsHTML() {
-    const content = document.getElementById('editor').value;
+    const editor = document.getElementById('editor');
+    const selectionStart = editor.selectionStart;
+    const selectionEnd = editor.selectionEnd;
+    
+    // Check if there's a selection
+    let content;
+    if (selectionStart !== selectionEnd) {
+        // Use selected text
+        content = editor.value.substring(selectionStart, selectionEnd);
+    } else {
+        // Use all content
+        content = editor.value;
+    }
     
     if (!content.trim()) {
         alert('No content to copy!');
@@ -429,12 +441,17 @@ function copyAsHTML() {
     // Copy to clipboard
     try {
         document.execCommand('copy');
-        updateStatus('HTML copied to clipboard - paste into Google Docs!');
+        const selectionInfo = (selectionStart !== selectionEnd) ? ' (selected text)' : '';
+        updateStatus(`HTML copied to clipboard${selectionInfo} - paste into Google Docs!`);
         
         // Show success message
         const infoBox = document.createElement('div');
         infoBox.className = 'info-box success';
-        infoBox.innerHTML = `✅ Content copied as HTML!<br>Now paste (⌘V) into Google Docs. Links and formatting will be preserved.`;
+        if (selectionStart !== selectionEnd) {
+            infoBox.innerHTML = `✅ Selected text copied as HTML!<br>Now paste (⌘V) into Google Docs. Links and formatting will be preserved.`;
+        } else {
+            infoBox.innerHTML = `✅ All content copied as HTML!<br>Now paste (⌘V) into Google Docs. Links and formatting will be preserved.`;
+        }
         
         const editorContainer = document.querySelector('.editor-container');
         const existingInfo = editorContainer.previousElementSibling;
