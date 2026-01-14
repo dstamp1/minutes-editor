@@ -407,11 +407,16 @@ function copyAsHTML() {
     // Convert markdown to HTML
     const htmlContent = convertMarkdownToHTML(content);
     
-    // Create a temporary container
+    // Create a temporary container with white background and black text
     const container = document.createElement('div');
     container.innerHTML = htmlContent;
     container.style.position = 'absolute';
     container.style.left = '-9999px';
+    container.style.backgroundColor = 'white';
+    container.style.color = 'black';
+    container.style.fontFamily = 'Arial, sans-serif';
+    container.style.fontSize = '11pt';
+    container.style.lineHeight = '1.5';
     document.body.appendChild(container);
     
     // Select the content
