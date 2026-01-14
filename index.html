@@ -7,7 +7,14 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="header">
+    <div style="display: flex; flex-direction: row; height: 100vh;">
+        <!-- Sidebar for text expansions -->
+        <div id="expanderSidebar" style="width: 80px; background: #f7f7f7; border-right: 1px solid #ddd; padding: 8px 4px; display: flex; flex-direction: column; align-items: stretch;">
+            <div style="font-weight: bold; font-size: 12px; margin-bottom: 8px; text-align: center;">Expansions</div>
+            <div id="expanderList" style="display: flex; flex-direction: column; gap: 4px;"></div>
+        </div>
+        <div style="flex: 1;">
+            <div class="header">
         <div class="controls">
             <div class="control-group">
                 <label>Meeting Title:</label>
@@ -75,13 +82,13 @@
     <div class="editor-container">
         <textarea id="editor" placeholder="Paste your meeting agenda here and start taking notes...
 
-Example:
-1. Call to Order
-2. Presentation
-   - Topic overview
-3. Questions
+    Example:
+    1. Call to Order
+    2. Presentation
+       - Topic overview
+    3. Questions
 
-Press ⌘; to insert timestamp, or enable auto-timestamp to insert on every Enter press."></textarea>
+    Press ⌘; to insert timestamp, or enable auto-timestamp to insert on every Enter press."></textarea>
     </div>
     
     <div class="footer">
@@ -108,5 +115,35 @@ Press ⌘; to insert timestamp, or enable auto-timestamp to insert on every Ente
 
     <script src="constants.js"></script>
     <script src="app.js"></script>
+    <script>
+    // Dynamically render text expander sidebar
+    window.addEventListener('DOMContentLoaded', function() {
+        if (window.TEXT_EXPANDERS) {
+            const expanderList = document.getElementById('expanderList');
+            expanderList.innerHTML = '';
+            Object.entries(TEXT_EXPANDERS).forEach(([key, value]) => {
+                const btn = document.createElement('button');
+                btn.textContent = value.length > 18 ? value.slice(0, 18) + '…' : value;
+                btn.title = value;
+                btn.style.fontSize = '11px';
+                btn.style.padding = '2px 4px';
+                btn.style.margin = '0';
+                btn.style.borderRadius = '3px';
+                btn.style.border = '1px solid #ccc';
+                btn.style.background = '#fff';
+                btn.style.cursor = 'pointer';
+                btn.onclick = function() {
+                    const editor = document.getElementById('editor');
+                    const start = editor.selectionStart;
+                    const text = editor.value;
+                    editor.value = text.substring(0, start) + value + text.substring(start);
+                    editor.selectionStart = editor.selectionEnd = start + value.length;
+                    editor.focus();
+                };
+                expanderList.appendChild(btn);
+            });
+        }
+    });
+    </script>
 </body>
 </html>

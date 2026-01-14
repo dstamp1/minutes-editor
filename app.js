@@ -2,6 +2,32 @@
 let autoTimestamp = false;
 let footnotes = { ...DEFAULT_FOOTNOTES };
 
+// Text expander mappings (initials to full name)
+const TEXT_EXPANDERS = {
+    'ab': 'Adem Brija',
+    'je': 'Jessica Elliott',
+    'no': 'Nilsa Orama',
+    'bp': 'Beverly Pabon',
+    'ds': 'Derek Stampone',
+    'vt': 'Vinny Torres',
+    'jv': 'Jason Villanueva',
+    'cvv': 'Candy Vives-Vasquez',
+    'nw': 'Ny Whitaker',
+    'am': 'Angel Mescain',
+    'ph': 'Pascal Hannou',
+    'jj':'Jewel Jones',
+    'meeting_notes': 'Meeting Notes:',
+    'action_items': 'Action Items:',
+    'meeting_agenda': MEETING_AGENDA,
+    'call_to_order': PHRASE_TEMPLATES.callToOrder,
+    'quorum': PHRASE_TEMPLATES.quorum,
+    'adopted': PHRASE_TEMPLATES.adopted,
+    'motion': PHRASE_TEMPLATES.motion,
+    'carried': PHRASE_TEMPLATES.carried,
+    'failed': PHRASE_TEMPLATES.failed,
+    // Add more snake_case shortcuts as needed
+};
+
 // Initialize on page load
 window.addEventListener('load', () => {
     const now = new Date();
@@ -12,9 +38,35 @@ window.addEventListener('load', () => {
     
     // Set up keyboard shortcuts
     document.getElementById('editor').addEventListener('keydown', handleKeyboardShortcuts);
+
+    // Add Expand Text button if not present
+    if (!document.getElementById('expandTextBtn')) {
+        const btn = document.createElement('button');
+        btn.id = 'expandTextBtn';
+        btn.textContent = 'Expand Text';
+        btn.className = 'expand-text-btn';
+        btn.style.margin = '8px 0';
+        btn.onclick = expandTextExpansions;
+        const editorContainer = document.querySelector('.editor-container');
+        editorContainer.insertAdjacentElement('beforebegin', btn);
+    }
 });
 
 // Utility Functions
+// Text expander function
+function expandTextExpansions() {
+    const editor = document.getElementById('editor');
+    let content = editor.value;
+    // Match ;xx (2-4 lowercase letters) or ;word_word (1-3 snake_case words)
+    content = content.replace(/;([a-z]{2,4}|[a-z]+(?:_[a-z]+){0,2})\b/g, (match, key) => {
+        if (TEXT_EXPANDERS[key]) {
+            return TEXT_EXPANDERS[key];
+        }
+        return match;
+    });
+    editor.value = content;
+    updateStatus('Text expansions applied');
+}
 function getCurrentTime() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, '0');
@@ -108,29 +160,27 @@ function toggleQuickInsert() {
 }
 
 function insertAgenda() {
-    const editor = document.getElementById('editor');
-    const start = editor.selectionStart;
-    const text = editor.value;
-    
-    editor.value = text.substring(0, start) + MEETING_AGENDA + text.substring(start);
-    editor.selectionStart = editor.selectionEnd = start + MEETING_AGENDA.length;
-    editor.focus();
-    updateStatus('Agenda inserted');
+    insertTextExpansion('meeting_agenda');
 }
 
 function insertPhrase(phraseType) {
+    // Use shared expander mapping
+    const key = phraseType.replace(/([A-Z])/g, '_$1').toLowerCase(); // camelCase to snake_case
+    insertTextExpansion(key, true);
+// Insert expansion by key
+function insertTextExpansion(key, withTimestamp = false) {
     const editor = document.getElementById('editor');
-    const timestamp = `[${getCurrentTime()}]`;
-    const phrase = PHRASE_TEMPLATES[phraseType] || '';
-    const fullPhrase = `${timestamp} ${phrase}`;
-    
     const start = editor.selectionStart;
     const text = editor.value;
-    
-    editor.value = text.substring(0, start) + fullPhrase + text.substring(start);
-    editor.selectionStart = editor.selectionEnd = start + fullPhrase.length;
+    let expansion = TEXT_EXPANDERS[key] || '';
+    if (withTimestamp) {
+        expansion = `[${getCurrentTime()}] ${expansion}`;
+    }
+    editor.value = text.substring(0, start) + expansion + text.substring(start);
+    editor.selectionStart = editor.selectionEnd = start + expansion.length;
     editor.focus();
-    updateStatus('Phrase inserted');
+    updateStatus('Expansion inserted');
+}
 }
 
 function toggleFootnotes() {
@@ -264,7 +314,21 @@ function processTimestamps() {
     let convertedCount = 0;
     
     // Get base YouTube URL without parameters
-    const baseUrl = recordingUrl.split('?')[0];
+    // Extract YouTube video ID from various URL formats
+    function getYouTubeVideoId(url) {
+        // Match standard YouTube URLs
+        const match = url.match(/[?&]v=([^&#]+)/);
+        if (match) return match[1];
+        // Match youtu.be short URLs
+        const shortMatch = url.match(/youtu\.be\/([^?&#]+)/);
+        if (shortMatch) return shortMatch[1];
+        // Match embed URLs
+        const embedMatch = url.match(/youtube\.com\/embed\/([^?&#]+)/);
+        if (embedMatch) return embedMatch[1];
+        return null;
+    }
+    const videoId = getYouTubeVideoId(recordingUrl);
+    const baseUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : recordingUrl.split('?')[0];
     
     // First, strip existing links to get back to just timestamps
     // This handles already-processed timestamps like [18:42:15](url)
@@ -276,17 +340,16 @@ function processTimestamps() {
     processedContent = processedContent.replace(timestampRegex, (match, timeStr) => {
         const timestamp = parseTime(timeStr);
         if (!timestamp) return match;
-        
         const timestampSeconds = timeToSeconds(timestamp);
         let elapsedSeconds = timestampSeconds - startSeconds;
-        
         // Handle timestamps that cross midnight
         if (elapsedSeconds < 0) {
             elapsedSeconds += 24 * 3600;
         }
-        
-        const youtubeUrl = `${baseUrl}?t=${elapsedSeconds}`;
-        
+        // Always use the correct YouTube format
+        const youtubeUrl = videoId
+            ? `https://www.youtube.com/watch?v=${videoId}&t=${elapsedSeconds}`
+            : `${baseUrl}?t=${elapsedSeconds}`;
         convertedCount++;
         // Keep original timestamp in brackets, link to YouTube with elapsed time
         return `[${timeStr}](${youtubeUrl})`;
@@ -344,6 +407,19 @@ function downloadMarkdown() {
 
 function convertMarkdownToHTML(markdown) {
     let html = markdown;
+    // Convert 24-hour time strings to 12-hour format with AM/PM
+    html = html.replace(/\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b/g, (match, h, m, s) => {
+        h = parseInt(h, 10);
+        let period = h >= 12 ? 'PM' : 'AM';
+        let hour = h % 12;
+        if (hour === 0) hour = 12;
+        let timeStr = `${hour}:${m}`;
+        if (s !== undefined) {
+            // Only show seconds if present in original
+            timeStr += `:${s}`;
+        }
+        return `${timeStr} ${period}`;
+    });
     
     // Convert headers (must come before other conversions)
     html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
